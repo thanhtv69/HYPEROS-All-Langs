@@ -42,11 +42,9 @@ jobs:
 
     - name: Download apktool
       run: |
-        curl -L -o apktool.jar https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/apktool.jar
-        chmod +x apktool.jar
-        mkdir apktool_bin
-        mv apktool.jar apktool_bin/apktool.jar
-        echo "alias apktool='java -jar $PWD/apktool_bin/apktool.jar'" >> $GITHUB_ENV
+        mkdir -p apktool_bin
+        curl -L -o apktool_bin/apktool.jar https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/apktool.jar
+        chmod +x apktool_bin/apktool.jar
 
     - name: Multi-language Localization Build
       env:
