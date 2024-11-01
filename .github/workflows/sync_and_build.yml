@@ -48,7 +48,7 @@ jobs:
 
     - name: Multi-language Localization Build
       env:
-        APK_TOOL: "java -jar $PWD/apktool_bin/apktool.jar"
+        APK_TOOL: "java -jar $(pwd)/apktool_bin/apktool.jar" # Đảm bảo sử dụng $(pwd) cho đường dẫn tuyệt đối
         OUT_DIR: "./output"
         RELEASE_NOTES: ""
       run: |
@@ -129,7 +129,7 @@ jobs:
                   echo "$manifest_content" > "$apk_output_dir/AndroidManifest.xml"
                   
                   # Build APK với ngôn ngữ hiện tại
-                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk
+                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk || { echo "Warning: Build failed for $apk_name with language $lang_code"; RELEASE_NOTES+="Warning: Build failed for $apk_name with language $lang_code.\n"; continue; }
                   zipalign -f 4 $output_dir/${apk_name}_${lang_code}.apk $output_dir/${apk_name}_${lang_code}_aligned.apk
                   mv $output_dir/${apk_name}_${lang_code}_aligned.apk $output_dir/${apk_name}_${lang_code}.apk
               fi
