@@ -40,6 +40,26 @@ jobs:
         distribution: 'zulu'
         java-version: '11'
 
+    - name: Install Android SDK Command-Line Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget unzip
+        wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip -O cmdline-tools.zip
+        sudo mkdir -p /usr/local/android-sdk
+        sudo unzip cmdline-tools.zip -d /usr/local/android-sdk/cmdline-tools
+        sudo mv /usr/local/android-sdk/cmdline-tools/cmdline-tools /usr/local/android-sdk/cmdline-tools/latest
+        export ANDROID_HOME=/usr/local/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+        export PATH=$PATH:$ANDROID_HOME/platform-tools
+        echo "export ANDROID_HOME=/usr/local/android-sdk" >> $GITHUB_ENV
+        echo "export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools" >> $GITHUB_ENV
+
+    - name: Accept Licenses and Install Build Tools
+      run: |
+        yes | sdkmanager --licenses
+        sdkmanager "build-tools;30.0.3"  # Thay 30.0.3 bằng phiên bản build tools mong muốn
+        echo "export PATH=\$PATH:\$ANDROID_HOME/build-tools/30.0.3" >> $GITHUB_ENV  # Thêm build-tools vào PATH
+
     - name: Download apktool
       run: |
         mkdir -p apktool_bin
@@ -55,7 +75,7 @@ jobs:
       run: |
         # Đường dẫn tuyệt đối đến apktool
         APK_TOOL="java -jar $(pwd)/apktool_bin/apktool.jar"
-
+        
         # Hàm generate_public_xml tạo file public.xml từ các tài nguyên
         generate_public_xml() {
           local input_dir=$1
