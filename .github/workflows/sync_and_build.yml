@@ -1,9 +1,13 @@
 name: Sync, Build, and Zip APKs with Multi-language Localization from HYPEROS
 
 on:
+  push: # Chạy khi có bất kỳ thay đổi nào được push lên
+    branches:
+      - main # Hoặc thay bằng tên nhánh mà bạn muốn theo dõi, ví dụ "master"
   schedule:
     - cron: '0 0 * * *' # Chạy mỗi ngày vào nửa đêm
   workflow_dispatch: # Có thể kích hoạt thủ công
+    
 
 jobs:
   sync_build_zip:
@@ -25,10 +29,17 @@ jobs:
         git remote add upstream https://github.com/haqanguven/HYPEROS-All-Langs.git
         git fetch upstream
 
+    # - name: Sync with Upstream
+    #   run: |
+    #     git merge upstream/master # Đồng bộ với nhánh chính của repo gốc
+    #     git push origin master # Đẩy thay đổi lên fork của bạn nếu cần
+
     - name: Sync with Upstream
       run: |
-        git merge upstream/main # Đồng bộ với nhánh chính của repo gốc
-        git push origin main # Đẩy thay đổi lên fork của bạn nếu cần
+        DEFAULT_BRANCH=$(git remote show upstream | grep 'HEAD branch' | awk '{print $NF}')
+        git merge upstream/$DEFAULT_BRANCH
+        git push origin $DEFAULT_BRANCH
+
 
     - name: Set up JDK
       uses: actions/setup-java@v3
