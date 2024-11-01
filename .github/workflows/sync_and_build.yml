@@ -48,12 +48,14 @@ jobs:
 
     - name: Multi-language Localization Build
       env:
-        APK_TOOL: "java -jar $(pwd)/apktool_bin/apktool.jar"
         OUT_DIR: "./output"
         RELEASE_NOTES: ""
         sdk_version: "30"  # Đặt phiên bản SDK, ví dụ là 30
         version_release: "11"  # Đặt phiên bản phát hành, ví dụ là 11
       run: |
+        # Đường dẫn tuyệt đối đến apktool
+        APK_TOOL="java -jar $(pwd)/apktool_bin/apktool.jar"
+
         # Hàm generate_public_xml tạo file public.xml từ các tài nguyên
         generate_public_xml() {
           local input_dir=$1
