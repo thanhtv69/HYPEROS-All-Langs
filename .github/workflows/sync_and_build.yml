@@ -40,25 +40,13 @@ jobs:
         distribution: 'zulu'
         java-version: '11'
 
-    - name: Install Android SDK Command-Line Tools
+    - name: Install zipalign
       run: |
-        sudo apt-get update
-        sudo apt-get install -y wget unzip
-        wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip -O cmdline-tools.zip
-        sudo mkdir -p /usr/local/android-sdk
-        sudo unzip cmdline-tools.zip -d /usr/local/android-sdk/cmdline-tools
-        sudo mv /usr/local/android-sdk/cmdline-tools/cmdline-tools /usr/local/android-sdk/cmdline-tools/latest
-        export ANDROID_HOME=/usr/local/android-sdk
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-        export PATH=$PATH:$ANDROID_HOME/platform-tools
-        echo "export ANDROID_HOME=/usr/local/android-sdk" >> $GITHUB_ENV
-        echo "export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools" >> $GITHUB_ENV
-
-    - name: Accept Licenses and Install Build Tools
-      run: |
-        yes | sdkmanager --licenses
-        sdkmanager "build-tools;30.0.3"  # Thay 30.0.3 bằng phiên bản build tools mong muốn
-        echo "export PATH=\$PATH:\$ANDROID_HOME/build-tools/30.0.3" >> $GITHUB_ENV  # Thêm build-tools vào PATH
+        mkdir -p android_build_tools
+        curl -L -o android_build_tools.zip https://dl.google.com/android/repository/build-tools_r30.0.3-linux.zip
+        unzip android_build_tools.zip -d android_build_tools
+        export PATH=$PATH:$(pwd)/android_build_tools/android-11  # Đường dẫn tới build-tools chứa zipalign
+        echo "export PATH=\$PATH:$(pwd)/android_build_tools/android-11" >> $GITHUB_ENV  # Thêm vào PATH cho các bước tiếp theo
 
     - name: Download apktool
       run: |
