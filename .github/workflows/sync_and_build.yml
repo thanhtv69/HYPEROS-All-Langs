@@ -1,4 +1,4 @@
-name: Sync, Build, and Zip APK
+name: Sync, Build, and Zip APKs with Multi-language Localization from HYPEROS
 
 on:
   schedule:
@@ -34,19 +34,178 @@ jobs:
       uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
-        java-version: '11' # Hoặc phiên bản yêu cầu của dự án
+        java-version: '11'
 
-    - name: Build APK
+    - name: Download apktool
       run: |
-        ./gradlew assembleRelease # Chạy lệnh build cho APK (tùy thuộc vào dự án, có thể là 'assembleDebug' hoặc 'assembleRelease')
+        curl -L -o apktool.jar https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/apktool.jar
+        chmod +x apktool.jar
+        mkdir apktool_bin
+        mv apktool.jar apktool_bin/apktool.jar
+        echo "alias apktool='java -jar $PWD/apktool_bin/apktool.jar'" >> $GITHUB_ENV
 
-    - name: Zip APK
+    - name: Multi-language Localization Build
+      env:
+        APK_TOOL: "java -jar $PWD/apktool_bin/apktool.jar"
+        OUT_DIR: "./output"
+      run: |
+        # Hàm generate_public_xml tạo file public.xml từ các tài nguyên
+        generate_public_xml() {
+          local input_dir=$1
+          local output_file=$2
+          
+          if [[ ! -d "$input_dir" ]]; then
+              echo "Error: Input directory does not exist."
+              return 1
+          fi
+
+          local output_folder
+          output_folder=$(dirname "$output_file")
+          if [[ ! -d "$output_folder" ]]; then
+              mkdir -p "$output_folder"
+          fi
+
+          echo '<?xml version="1.0" encoding="utf-8"?>' > "$output_file"
+          echo '<resources>' >> "$output_file"
+
+          find "$input_dir" -type f | while read -r file_path; do
+              file_name=$(basename "$file_path")
+              basename="${file_name%.*}"
+              resource_type=""
+              
+              if [[ "$file_name" == *"strings.xml" ]]; then
+                  resource_type="string"
+              elif [[ "$file_name" == *"arrays.xml" ]]; then
+                  resource_type="array"
+              elif [[ "$file_name" == *"plurals.xml" ]]; then
+                  resource_type="plurals"
+              else
+                  continue
+              fi
+              
+              grep -oP 'name="\K[^"]+' "$file_path" | while read -r name; do
+                  echo "    <public type=\"$resource_type\" name=\"$name\" />" >> "$output_file"
+              done
+          done
+
+          echo '</resources>' >> "$output_file"
+        }
+
+        # Hàm localization_build để xây dựng APK cho từng ngôn ngữ từ thư mục dự án
+        localization_build() {
+          local apk_name=$1
+          local package_name=$2
+          local apk_res_dir="main/${apk_name}.apk/res"
+          local output_dir="$OUT_DIR/$apk_name/packed"
+
+          mkdir -p "$output_dir"
+
+          # Kiểm tra thư mục APK tồn tại
+          if [[ ! -d "$apk_res_dir" ]]; then
+              echo "Error: Directory for $apk_name does not exist."
+              return 1
+          fi
+
+          # Duyệt qua tất cả các thư mục values-* để lấy mã ngôn ngữ và build
+          for values_dir in "$apk_res_dir"/values-*; do
+              if [[ -d "$values_dir" ]]; then
+                  lang_code=$(basename "$values_dir" | cut -d'-' -f2)
+                  local apk_output_dir="$OUT_DIR/$apk_name/$lang_code"
+                  
+                  mkdir -p "$apk_output_dir/res"
+                  cp -r "$apk_res_dir/." "$apk_output_dir/res/"
+
+                  # Tạo file public.xml cho các tài nguyên
+                  generate_public_xml "$apk_output_dir/res" "$apk_output_dir/res/values/public.xml"
+
+                  # Tạo nội dung cho AndroidManifest.xml
+                  manifest_content="<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?><manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"$package_name\" android:versionCode=\"1\" android:versionName=\"1.0\"><application android:allowBackup=\"true\" android:label=\"${apk_name} (${lang_code})\" android:supportsRtl=\"true\"></application></manifest>"
+
+                  # Tạo file AndroidManifest.xml
+                  echo "$manifest_content" > "$apk_output_dir/AndroidManifest.xml"
+                  
+                  # Build APK với ngôn ngữ hiện tại
+                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk
+                  zipalign -f 4 $output_dir/${apk_name}_${lang_code}.apk $output_dir/${apk_name}_${lang_code}_aligned.apk
+                  mv $output_dir/${apk_name}_${lang_code}_aligned.apk $output_dir/${apk_name}_${lang_code}.apk
+              fi
+          done
+        }
+
+        # Danh sách các APK cần build từ repo HYPEROS
+        declare -A BUILD_APK_LIST=(
+          ["AICallAssistant"]="com.xiaomi.aiasst.service"
+          ["AuthManager"]="com.lbe.security.miui"
+          ["Calendar"]="com.android.calendar"
+          ["CalendarProvider"]="com.android.providers.calendar"
+          ["Cit"]="com.miui.cit"
+          ["CleanMaster"]="com.miui.cleanmaster"
+          ["CloudBackup"]="com.miui.cloudbackup"
+          ["CloudService"]="com.miui.cloudservice"
+          ["Contacts"]="com.android.contacts"
+          ["ContactsProvider"]="com.android.providers.contacts"
+          ["DownloadProvider"]="com.android.providers.downloads"
+          ["DownloadProviderUi"]="com.android.providers.downloads.ui"
+          ["GalleryEditor"]="com.miui.mediaeditor"
+          ["InCallUI"]="com.android.incallui"
+          ["MiAI"]="com.miui.voiceassist"
+          ["MiAITranslate"]="com.xiaomi.aiasst.vision"
+          ["MiCloudSync"]="com.miui.micloudsync"
+          ["MiGalleryLockscreen"]="com.mfashiongallery.emag"
+          ["MiLinkService"]="com.milink.service"
+          ["MiMover"]="com.miui.huanji"
+          ["MiSettings"]="com.xiaomi.misettings"
+          ["MiShare"]="com.miui.mishare.connectivity"
+          ["MiuiAod"]="com.miui.aod"
+          ["MiuiBluetooth"]="com.xiaomi.bluetooth"
+          ["MiuiCamera"]="com.android.camera"
+          ["MiuiContentCatcher"]="com.miui.contentcatcher"
+          ["MiuiExtraPhoto"]="com.miui.extraphoto"
+          ["MiuiFreeformService"]="com.miui.freeform"
+          ["MiuiFrequentPhrase"]="com.miui.phrase"
+          ["MiuiGallery"]="com.miui.gallery"
+          ["MiuiHome"]="com.miui.home"
+          ["MiuiPackageInstaller"]="com.miui.packageinstaller"
+          ["MiuiSystemUI"]="com.android.systemui"
+          ["MiuixEditor"]="com.miuix.editor"
+          ["Mms"]="com.android.mms"
+          ["NQNfcNci"]="com.android.nfc"
+          ["PermissionController"]="com.android.permissioncontroller"
+          ["PersonalAssistant"]="com.miui.personalassistant"
+          ["PowerKeeper"]="com.miui.powerkeeper"
+          ["SecurityAdd"]="com.miui.securityadd"
+          ["SecurityCenter"]="com.miui.securitycenter"
+          ["Settings"]="com.android.settings"
+          ["SmartCards"]="com.miui.tsmclient"
+          ["Taplus"]="com.miui.contentextension"
+          ["TeleService"]="com.android.phone"
+          ["Telecom"]="com.android.server.telecom"
+          ["TelephonyProvider"]="com.android.providers.telephony"
+          ["ThemeManager"]="com.android.thememanager"
+          ["Traceur"]="com.android.traceur"
+          ["VpnDialogs"]="com.android.vpndialogs"
+          ["Weather"]="com.miui.weather2"
+          ["XiaomiAccount"]="com.xiaomi.account"
+          ["XiaomiSimActivateService"]="com.xiaomi.simactivate.service"
+          ["MiuiMacro"]="com.xiaomi.macro"
+          ["framework-res"]="android"
+        )
+
+        for apk_name in "${!BUILD_APK_LIST[@]}"; do
+          localization_build "$apk_name" "${BUILD_APK_LIST[$apk_name]}"
+        done
+
+    - name: Zip All APKs
       run: |
         mkdir -p output
-        zip -j output/app-release.zip app/build/outputs/apk/release/app-release.apk # Đường dẫn tới file APK, tùy thuộc vào cấu trúc của dự án
+        zip -j output/all-languages-apks.zip output/*/packed/*.apk
 
-    - name: Upload ZIP file
-      uses: actions/upload-artifact@v3
+    - name: Upload ZIP file as GitHub Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: apk-release
-        path: output/app-release.zip
+        upload_url: ${{ github.event.release.upload_url || github.repository_url }}/releases/latest/assets?name=all-languages-apks.zip
+        asset_path: output/all-languages-apks.zip
+        asset_name: all-languages-apks.zip
+        asset_content_type: application/zip
