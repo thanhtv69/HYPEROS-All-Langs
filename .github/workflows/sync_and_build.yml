@@ -48,9 +48,11 @@ jobs:
 
     - name: Multi-language Localization Build
       env:
-        APK_TOOL: "java -jar $(pwd)/apktool_bin/apktool.jar" # Đảm bảo sử dụng $(pwd) cho đường dẫn tuyệt đối
+        APK_TOOL: "java -jar $(pwd)/apktool_bin/apktool.jar"
         OUT_DIR: "./output"
         RELEASE_NOTES: ""
+        sdk_version: "30"  # Đặt phiên bản SDK, ví dụ là 30
+        version_release: "11"  # Đặt phiên bản phát hành, ví dụ là 11
       run: |
         # Hàm generate_public_xml tạo file public.xml từ các tài nguyên
         generate_public_xml() {
@@ -123,13 +125,19 @@ jobs:
                   generate_public_xml "$apk_output_dir/res" "$apk_output_dir/res/values/public.xml"
 
                   # Tạo nội dung cho AndroidManifest.xml
-                  manifest_content="<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?><manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"$package_name\" android:versionCode=\"1\" android:versionName=\"1.0\"><application android:allowBackup=\"true\" android:label=\"${apk_name} (${lang_code})\" android:supportsRtl=\"true\"></application></manifest>"
+                  manifest_content="<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?><manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" android:compileSdkVersion=\"$sdk_version\" android:compileSdkVersionCodename=\"$version_release\" package=\"$package_name\" platformBuildVersionCode=\"$sdk_version\" platformBuildVersionName=\"$version_release\"><overlay android:isStatic=\"true\" android:priority=\"999\" android:targetPackage=\"$package_name\"/></manifest>"
+
+                  # Tạo nội dung cho apktool.yml
+                  apktool_content="version: 2.9.3\napkFileName: $apk_name.apk\nisFrameworkApk: false\nusesFramework:\n  ids:\n  - 1\n  tag: null\nsdkInfo:\npackageInfo:\n  forcedPackageId: 127\n  renameManifestPackage: null\nversionInfo:\n  versionCode: $sdk_version\n  versionName: $version_release\nresourcesAreCompressed: false\nsharedLibrary: false\nsparseResources: false\ndoNotCompress:\n- resources.arsc"
 
                   # Tạo file AndroidManifest.xml
-                  echo "$manifest_content" > "$apk_output_dir/AndroidManifest.xml"
+                  echo -e "$manifest_content" > "$apk_output_dir/AndroidManifest.xml"
+
+                  # Tạo file apktool.yml
+                  echo -e "$apktool_content" > "$apk_output_dir/apktool.yml"
                   
                   # Build APK với ngôn ngữ hiện tại
-                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk || { echo "Warning: Build failed for $apk_name with language $lang_code"; RELEASE_NOTES+="Warning: Build failed for $apk_name with language $lang_code.\n"; continue; }
+                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk
                   zipalign -f 4 $output_dir/${apk_name}_${lang_code}.apk $output_dir/${apk_name}_${lang_code}_aligned.apk
                   mv $output_dir/${apk_name}_${lang_code}_aligned.apk $output_dir/${apk_name}_${lang_code}.apk
               fi
