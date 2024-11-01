@@ -129,7 +129,6 @@ jobs:
 
                   # Tạo nội dung cho apktool.yml
                   apktool_content="version: 2.9.3\napkFileName: $apk_name.apk\nisFrameworkApk: false\nusesFramework:\n  ids:\n  - 1\n  tag: null\nsdkInfo:\npackageInfo:\n  forcedPackageId: 127\n  renameManifestPackage: null\nversionInfo:\n  versionCode: $sdk_version\n  versionName: $version_release\nresourcesAreCompressed: false\nsharedLibrary: false\nsparseResources: false\ndoNotCompress:\n- resources.arsc"
-
                   # Tạo file AndroidManifest.xml
                   echo -e "$manifest_content" > "$apk_output_dir/AndroidManifest.xml"
 
@@ -137,7 +136,7 @@ jobs:
                   echo -e "$apktool_content" > "$apk_output_dir/apktool.yml"
                   
                   # Build APK với ngôn ngữ hiện tại
-                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk
+                  $APK_TOOL b -f $apk_output_dir -o $output_dir/${apk_name}_${lang_code}.apk || { echo "Warning: Build failed for $apk_name with language $lang_code"; RELEASE_NOTES+="Warning: Build failed for $apk_name with language $lang_code.\n"; continue; }
                   zipalign -f 4 $output_dir/${apk_name}_${lang_code}.apk $output_dir/${apk_name}_${lang_code}_aligned.apk
                   mv $output_dir/${apk_name}_${lang_code}_aligned.apk $output_dir/${apk_name}_${lang_code}.apk
               fi
