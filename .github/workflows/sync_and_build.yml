@@ -43,7 +43,7 @@ jobs:
     - name: Download apktool
       run: |
         mkdir -p apktool_bin
-        curl -L -o apktool_bin/apktool.jar https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/apktool.jar
+        curl -L -o apktool_bin/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar
         chmod +x apktool_bin/apktool.jar
 
     - name: Multi-language Localization Build
