@@ -1,0 +1,52 @@
+name: Sync, Build, and Zip APK
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Chạy mỗi ngày vào nửa đêm
+  workflow_dispatch: # Có thể kích hoạt thủ công
+
+jobs:
+  sync_build_zip:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Git
+      run: |
+        git config --global user.name "GitHub Action"
+        git config --global user.email "action@github.com"
+
+    - name: Add Upstream Remote
+      run: |
+        git remote add upstream https://github.com/haqanguven/HYPEROS-All-Langs.git
+        git fetch upstream
+
+    - name: Sync with Upstream
+      run: |
+        git merge upstream/main # Đồng bộ với nhánh chính của repo gốc
+        git push origin main # Đẩy thay đổi lên fork của bạn nếu cần
+
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '11' # Hoặc phiên bản yêu cầu của dự án
+
+    - name: Build APK
+      run: |
+        ./gradlew assembleRelease # Chạy lệnh build cho APK (tùy thuộc vào dự án, có thể là 'assembleDebug' hoặc 'assembleRelease')
+
+    - name: Zip APK
+      run: |
+        mkdir -p output
+        zip -j output/app-release.zip app/build/outputs/apk/release/app-release.apk # Đường dẫn tới file APK, tùy thuộc vào cấu trúc của dự án
+
+    - name: Upload ZIP file
+      uses: actions/upload-artifact@v3
+      with:
+        name: apk-release
+        path: output/app-release.zip
