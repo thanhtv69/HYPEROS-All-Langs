@@ -1,11 +1,11 @@
 name: Sync, Build, and Zip APKs with Multi-language Localization from HYPEROS
 
 on:
-  push:
-    branches:
-      - master
-  schedule:
-    - cron: '0 0 * * *' # Chạy mỗi ngày vào nửa đêm
+  # push:
+  #   branches:
+  #     - master
+  # schedule:
+  #   - cron: '0 0 * * *' # Chạy mỗi ngày vào nửa đêm
   workflow_dispatch: # Có thể kích hoạt thủ công
     
 jobs:
